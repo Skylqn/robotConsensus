@@ -12,8 +12,24 @@ import Graph
 import Simulation
 import matplotlib.pyplot as plt
 
-coordonnées = np.array([[4.0] , [4.0]])
-obstacles = np.array([[2.0, 2.0]])
+# Tes listes de points
+coordonnées = [
+    np.array([[4.0], [4.0]]) 
+    # np.array([[-4.0], [4.0]]), 
+    # np.array([[-4.0], [-4.0]]),
+    # np.array([[4.0], [-4.0]])
+]
+
+obstacles = [
+    np.array([[1.9], [2.0]])
+    # np.array([[0], [4.0]]),
+    # np.array([[-4], [0]]),
+    # np.array([[0], [-4]]),
+    # np.array([[4], [0]])
+]
+
+index_cible = 0
+rayon_validation = 1 
 # fleet definition
 nbOfRobots = 6  
 fleet = Robot.Fleet(nbOfRobots, dynamics='singleIntegrator2D')#, initState=initState)    
@@ -50,11 +66,19 @@ kp = 1 #  **** A MODIFIER EN TP ****
 kt = 0.2
 k_rep = 2
 D_s = 1
-D_obs = 0.8
+D_obs = 0.9
+
 
 
 # main loop of simulation
 for t in simulation.t:
+
+    cible_actuelle = coordonnées[index_cible]
+    if np.linalg.norm(fleet.robot[0].state - cible_actuelle) < rayon_validation:
+        if index_cible < len(coordonnées) - 1:
+            index_cible += 1
+            cible_actuelle = coordonnées[index_cible]
+
     for i in range(0, fleet.nbOfRobots):
         u_i = np.zeros((2,1))
         pos_i = fleet.robot[i].state
@@ -67,27 +91,27 @@ for t in simulation.t:
             
             if distance_inter_robots > 0:
                 u_i += kp * vecteur_ij 
-
                 if distance_inter_robots < D_s:
                     force_repulsion = k_rep * (D_s - distance_inter_robots)
                     u_i += force_repulsion * (-vecteur_ij / distance_inter_robots)
 
-        pos_obs = obstacles[0].reshape(2, 1)
-        vecteur_io = pos_obs - pos_i 
-        distance_obs = np.linalg.norm(vecteur_io)
-        
-        if distance_obs < D_obs and distance_obs > 0:
-            force_repulsion_obs = k_rep * (D_obs - distance_obs)
-            u_i += force_repulsion_obs * (-vecteur_io / distance_obs)
+        for obs in obstacles:
+            pos_obs = obs.reshape(2, 1)
+            vecteur_io = pos_obs - pos_i 
+            distance_obs = np.linalg.norm(vecteur_io)
+            
+            if distance_obs < D_obs and distance_obs > 0:
+                force_repulsion_obs = k_rep * (D_obs - distance_obs)
+                u_i += force_repulsion_obs * (-vecteur_io / distance_obs)
 
-        vecteur_cible = coordonnées - pos_i
+        vecteur_cible = cible_actuelle - pos_i
         u_i += kt * vecteur_cible
         
         fleet.robot[i].ctrl = u_i
-		
         
     simulation.addDataFromFleet(fleet)
     fleet.integrateMotion(Te)
+
 
 # plot
 simulation.plot(figNo=2)
@@ -111,10 +135,15 @@ for tt in range(0, len(simulation.t), mod_affichage):
     ax.grid(True)
     ax.set_title(f"Temps : {simulation.t[tt]:.2f} s")
 
-    # 1. On dessine la cible (une croix rouge)
-    ax.plot(coordonnées[0,0], coordonnées[1,0], 'rx', markersize=12, label="Cible")
+    # 1. On dessine TOUTES les cibles (croix rouges)
+    for c in coordonnées:
+        ax.plot(c[0,0], c[1,0], 'rx', markersize=12)
+            
+    # 2. On dessine TOUS les obstacles (carrés noirs)
+    for obs in obstacles:
+        ax.plot(obs[0,0], obs[1,0], 'ks', markersize=12)
 
-    # 2. On dessine les robots et leurs liens
+    # 3. On dessine les robots et leurs liens
     for i in range(fleet.nbOfRobots):
         # Récupération de la position du robot i à l'instant tt
         xi = simulation.robotSimulation[i].state[0, tt]
