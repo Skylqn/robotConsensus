@@ -59,4 +59,4 @@ for t in simulation.t:
 simulation.plot(figNo=2)
 simulation.plotFleet(figNo=2, mod=100, links=True)
 
-#Bombobobobobclaaaat
+#Bomboclat
